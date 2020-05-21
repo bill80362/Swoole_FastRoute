@@ -22,7 +22,7 @@ $dispatcher = FastRoute\simpleDispatcher(function(FastRoute\RouteCollector $r) {
     });
 });
 
-$http = new Swoole\Http\Server("bill.nctu.me", 8080);
+$http = new Swoole\Http\Server("bill.nctu.me", 9555);
 printf("HTTP server 啟動 %s:%s\n", $http->host, $http->port);
 $http->on('request', function ($request, $response) use($dispatcher) {
     //CORS
@@ -55,8 +55,9 @@ $http->on('request', function ($request, $response) use($dispatcher) {
     }
     $uri = rawurldecode($uri);
     $routeInfo = $dispatcher->dispatch($httpMethod, $uri);
-    //Json參數.
-    Middleware::$ReqData = json_decode($request->rawContent(),true);
+    //Json參數
+    $oMiddleware = new Middleware();
+    $oMiddleware->ReqData = json_decode($request->rawContent(),true);
     //分配路由狀態
     switch ($routeInfo[0]) {
         case FastRoute\Dispatcher::NOT_FOUND:
@@ -80,12 +81,11 @@ $http->on('request', function ($request, $response) use($dispatcher) {
             $vars = $routeInfo[2];
             //自定義$handler 第一個參數是 string class@method 第二個之後是$vars
             list($class, $method) = explode('@',$handler,2);
-            $obj = new $class();//類別進行物件化
+            $obj = new $class($oMiddleware);//類別進行物件化
             $response->write( $obj->{$method}($vars) );//傳入參數
-            unset($obj);
             break;
     }
-    //unset
+
     $response->end();
     //路由套件設定區 END
 });
